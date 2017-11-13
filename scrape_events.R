@@ -1,6 +1,8 @@
 library(rvest)
 library(magrittr)
 library(dplyr)
+library(purrr)
+library(stringr)
 
 
 scrape_events <- function(){
@@ -16,6 +18,15 @@ scrape_events <- function(){
   
   events_df %>%
     mutate(url = html_nodes(events_nodes, "i a") %>% html_attr('href'))
+  
+  dates <- 
+    events_nodes %>%
+    html_nodes('.b-statistics__date') %>%
+    html_text() %>%
+    map_chr(str_trim)
+  
+  events_df %>%
+    mutate(Date = dates)
 }
 
 # events_df <- scrape_events()

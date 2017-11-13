@@ -41,6 +41,13 @@ scrape_fight <- function(url){
                                         paste0(v, '2')))
     })
   
+  fights_df %<>% 
+    mutate(
+      Fight_url = fights_nodes %>%
+                    html_nodes('tbody tr.b-fight-details__table-row') %>% 
+                    html_attr('data-link')
+    )
+  
   fights_df %>% na.omit
 }
 

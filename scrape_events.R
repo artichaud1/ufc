@@ -16,8 +16,8 @@ scrape_events <- function(){
     extract2(1) %>%
     na.omit
   
-  events_df %>%
-    mutate(url = html_nodes(events_nodes, "i a") %>% html_attr('href'))
+  events_df %<>%
+    mutate(Url = html_nodes(events_nodes, "i a") %>% html_attr('href'))
   
   dates <- 
     events_nodes %>%

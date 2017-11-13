@@ -1,57 +1,61 @@
 library(rvest)
-library(stringr)
-library(purrr)
-library(tidyr)
+library(magrittr)
+library(dplyr)
 
 
 scrape_fight <- function(url){
-
-  fights_webpage <- read_html(url)
   
-  fights_nodes <- html_nodes(fights_webpage, '.b-fight-details__table')
+  webpage <- read_html(url)
   
-  fights_df <- 
-    fights_nodes %>%
-    html_table(header = TRUE, fill = TRUE) %>%
-    extract2(1) %>%
-    na.omit
+  # scrape Totals table: 2nd section
+  totals <- 
+    webpage %>%
+    html_nodes('.b-fight-details') %>%
+    html_nodes('section') %>%
+    extract2(2) %>%
+    html_nodes('table tbody tr td p') %>%
+    html_text()
   
-  # We re-extract fighter names into a vector
-  fighters <- 
-    fights_nodes %>%
-    html_nodes('a.b-link') %>%
-    html_text %>%
-    map_chr(str_trim)
+  totals_labels <-
+    c('Fighter', 'Kd', 'SigStrikes', 'SigStrikesPerc', 'TotStrikes', 'Td', 'TdPerc', 'SubAtt', 'Pass', 'Rev')
   
-  # fighter1 are the odds, fighter2 are the evens
-  fighter1 <- fighters[(1:length(fighters)) %% 2 == 1]
-  fighter2 <- fighters[(1:length(fighters)) %% 2 == 0]
+  totals_fighter1 <- as.list(totals[(1:length(totals)) %% 2 == 1] )
+  names(totals_fighter1) <- paste0(totals_labels, '1')
+  totals_fighter2 <- as.list(totals[(1:length(totals)) %% 2 == 0] )
+  names(totals_fighter2) <- paste0(totals_labels, '2')
   
-  fights_df %<>% 
-    mutate(Fighter1 = fighter1, Fighter2 = fighter2) %>%
-    rename(Fighters = Fighter)
+  totals <- cbind(as_data_frame(totals_fighter1), as_data_frame(totals_fighter2))
   
-  stats_cols <- c('Str', 'Td', 'Sub', 'Pass')
+  # remove redundant information from totals table
+  totals <- totals[, !(colnames(totals) %in% 
+                         c('Fighter1', 'Fighter2',
+                           'SigStrikesPerc1', 'SigStrikesPerc2',
+                           'TdPerc1', 'TdPerc2'))]
   
-  # split the stats into fighter1 stats and fighter2 stats
-  stats_cols %>%
-    walk(function(v){
-      fights_df <<-
-        separate(fights_df, v, into = c(paste0(v, '1'),
-                                        paste0(v, '2')))
-    })
+  # scrape Significant Strikes table: the only direct-child table
+  sig_strikes <- 
+    webpage %>%
+    html_nodes('.b-fight-details > table') %>%
+    html_nodes('tbody tr td p') %>%
+    html_text()
   
-  fights_df %<>% 
-    mutate(
-      Fight_url = fights_nodes %>%
-                    html_nodes('tbody tr.b-fight-details__table-row') %>% 
-                    html_attr('data-link')
-    )
+  sig_strikes_labels <-
+    c('Fighter', 'SigStrikes', 'SigStrikesPerc', 'Head', 'Body', 'Leg', 'Distance', 'Clinch', 'Ground')
   
-  fights_df %>% na.omit
+  sig_strikes_fighter1 <- as.list(sig_strikes[(1:length(sig_strikes)) %% 2 == 1] )
+  names(sig_strikes_fighter1) <- paste0(sig_strikes_labels, '1')
+  sig_strikes_fighter2 <- as.list(sig_strikes[(1:length(sig_strikes)) %% 2 == 0] )
+  names(sig_strikes_fighter2) <- paste0(sig_strikes_labels, '2')
+  
+  sig_strikes <- cbind(as_data_frame(sig_strikes_fighter1), as_data_frame(sig_strikes_fighter2))
+  
+  # remove redundant info from sig_strikes table
+  sig_strikes <- sig_strikes[, !(colnames(sig_strikes) %in% 
+                                 c('Fighter1', 'Fighter2', 
+                                   'SigStrikes1', 'SigStrikes2',
+                                   'SigStrikesPerc1', 'SigStrikesPerc2'))]
+  
+  cbind(totals, sig_strikes)
 }
 
-# View(scrape_fight('http://www.fightmetric.com/event-details/d856a0080ac09ed7'))
-
-  
-  
+# View(scrape_fight(url = 'http://www.fightmetric.com/fight-details/b55605791a4d72b9'))

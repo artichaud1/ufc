@@ -2,6 +2,8 @@ library(tidyr)
 library(magrittr)
 library(stringr)
 library(anytime)
+library(readr)
+library(dplyr)
 
 source('scrape_fights.R')
 
@@ -75,7 +77,7 @@ make_date <- function(fights){
 
 
 fights_scraped <- scrape_fights()
-fights_scraped %>% write_csv('fights_scraped.csv')
+fights_scraped %>% saveRDS('fights_scraped.csv')
 
 vars_xofy <- c('SigStrikes', 'TotStrikes', 'Td', 'Head', 'Body', 'Leg', 'Distance', 'Clinch', 'Ground')
 vars_xofy <- c(paste0(vars_xofy,   '1'), paste0(vars_xofy, '2'))
@@ -172,4 +174,39 @@ fights_df %<>%
   left_join(fighter1_df, by = c('Fight_url', 'Date')) %>%
   left_join(fighter2_df, by = c('Fight_url', 'Date'))
 
-fights_df %>% write_csv('fights.csv')
+fights_df %>% saveRDS('fights.RDS')
+#fights_df <- readRDS('fights.csv')
+
+
+# Compute Diff per minute stats for the winner (fighter1) -----------------
+
+cols1 <- 
+  colnames(fights_df) %>%
+  extract(startsWith(., 'Cume') & endsWith(., 'PM1'))
+
+cols2 <- 
+  colnames(fights_df) %>%
+  extract(startsWith(., 'Cume') & endsWith(., 'PM2'))
+
+for(k in 1:length(cols1)){
+  fights_df[[paste0('Diff_', str_sub(cols1[k], end = -2))]] <- 
+    fights_df[[cols1[k]]] - fights_df[[cols2[k]]]
+}
+
+fights1_df <- 
+  fights_df %>%
+  select(c(one_of('Weight.class'), starts_with('Diff'))) %>%
+  mutate(target = 1)
+
+# Compute Diff per minute stats for the loser fighter2 ---------------------
+
+fights2_df <- 
+  fights1_df %>%
+  mutate_if(is.numeric, ~ -.x) %>%
+  mutate(target = 0)
+
+
+# Create modeling dataset -------------------------------------------------
+
+fights_model_df <- bind_rows(fights1_df, fights2_df)
+fights_model_df %>% saveRDS('fights_model_df.RDS')

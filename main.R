@@ -49,6 +49,7 @@ to_numeric <- function(fights, cols){
 
 
 make_mins <- function(fights){
+  
   fights %>%
     separate('Time', into = c('Mins', 'Secs'), convert = TRUE) %>%
     mutate(Mins = Mins + Secs/60) %>%
@@ -57,8 +58,6 @@ make_mins <- function(fights){
 
 
 per_min_stats <- function(fights){
-  
-  
   
   num_vars <- colnames(fights)[map_lgl(fights, is.numeric)] %>% setdiff(c('Round', 'Mins'))
   
@@ -69,6 +68,7 @@ per_min_stats <- function(fights){
 
 
 make_date <- function(fights){
+  
   fights %>% mutate(Date = anydate(Date))
 }
 
@@ -77,7 +77,8 @@ make_date <- function(fights){
 
 
 fights_scraped <- scrape_fights()
-fights_scraped %>% saveRDS('fights_scraped.csv')
+fights_scraped %>% saveRDS('fights_scraped_df.RDS')
+# fights_scraped <- readRDS('fights_scraped_df.RDS')
 
 vars_xofy <- c('SigStrikes', 'TotStrikes', 'Td', 'Head', 'Body', 'Leg', 'Distance', 'Clinch', 'Ground')
 vars_xofy <- c(paste0(vars_xofy,   '1'), paste0(vars_xofy, '2'))
@@ -126,15 +127,17 @@ fighters_df <-
 for(col in colnames(fighters_df) %>% setdiff('FighterFlag')){
   if(is.numeric(fighters_df[[col]])){
     fighters_df$old_col <- fighters_df[[col]]
-    fighters_df %<>% mutate(new_col = cumsum(old_col))
+    fighters_df %<>% 
+      mutate(new_col = cumsum(old_col)) %>%
+      mutate(new_col = lag(new_col))
     fighters_df[[paste('Cume', col, sep = '_')]] <- fighters_df$new_col
   }
 }
 
 fighters_df %<>% 
   select(-old_col, -new_col) %>%
-  arrange(Fighter, Date)
-
+  arrange(Fighter, Date) %>%
+  na.omit
 
 # Compute per minute stats ------------------------------------------------
 cols <- colnames(fighters_df)
@@ -146,6 +149,7 @@ for(col in stats_cols){
   fighters_df[[paste0(col, '_PM')]] <- fighters_df[[col]] / fighters_df[['Cume_Mins']]
 }
 
+fighters_df %>% saveRDS('fighters_df.RDS')
 
 # Split back into fighter1 and fighter2 dataframes ------------------------
 
@@ -174,8 +178,8 @@ fights_df %<>%
   left_join(fighter1_df, by = c('Fight_url', 'Date')) %>%
   left_join(fighter2_df, by = c('Fight_url', 'Date'))
 
-fights_df %>% saveRDS('fights.RDS')
-#fights_df <- readRDS('fights.csv')
+fights_df %>% saveRDS('fights_df.RDS')
+#fights_df <- readRDS('fights_df.csv')
 
 
 # Compute Diff per minute stats for the winner (fighter1) -----------------

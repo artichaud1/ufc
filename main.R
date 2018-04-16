@@ -76,9 +76,13 @@ make_date <- function(fights){
 # Main script -------------------------------------------------------------
 
 
-fights_scraped <- scrape_fights()
+fights_scraped <- scrape_fights() 
+
 fights_scraped %>% saveRDS('fights_scraped_df.RDS')
+fights_scraped %>% write.csv('fights_scraped.csv', row.names = FALSE)
 # fights_scraped <- readRDS('fights_scraped_df.RDS')
+
+fights_scraped %<>% na.omit
 
 vars_xofy <- c('SigStrikes', 'TotStrikes', 'Td', 'Head', 'Body', 'Leg', 'Distance', 'Clinch', 'Ground')
 vars_xofy <- c(paste0(vars_xofy,   '1'), paste0(vars_xofy, '2'))
@@ -128,8 +132,7 @@ for(col in colnames(fighters_df) %>% setdiff('FighterFlag')){
   if(is.numeric(fighters_df[[col]])){
     fighters_df$old_col <- fighters_df[[col]]
     fighters_df %<>% 
-      mutate(new_col = cumsum(old_col)) %>%
-      mutate(new_col = lag(new_col))
+      mutate(new_col = cumsum(old_col))
     fighters_df[[paste('Cume', col, sep = '_')]] <- fighters_df$new_col
   }
 }
@@ -140,16 +143,43 @@ fighters_df %<>%
   na.omit
 
 # Compute per minute stats ------------------------------------------------
+
+# Note: we will also compute pre minute stats up to but excluding current fight
+
 cols <- colnames(fighters_df)
 stats_cols <- 
   cols[startsWith(cols, 'Cume')] %>%
   setdiff(c('Cume_Round', 'Cume_Mins'))
 
+fighters_df %<>% 
+  group_by(Fighter) %>%
+  arrange(Fighter, Date)
+
 for(col in stats_cols){
-  fighters_df[[paste0(col, '_PM')]] <- fighters_df[[col]] / fighters_df[['Cume_Mins']]
+  
+  fighters_df$temp_col0 = fighters_df[[col]]
+  
+  fighters_df %<>%
+    mutate(temp_col1 = temp_col0 / Cume_Mins) %>%
+    mutate(temp_col2 = lag(temp_col1))
+  
+  fighters_df[[paste0(col, '_PM')]] <- fighters_df$temp_col1
+  fighters_df[[paste0('Prev_', col, '_PM')]] <- fighters_df$temp_col2
 }
 
+fighters_df %<>% select(-temp_col0, -temp_col1, -temp_col2)
+
 fighters_df %>% saveRDS('fighters_df.RDS')
+fighters_df %>% write.csv('fighters.csv', row.names = FALSE)
+
+# Save a version with only most recent stats for each fighter
+
+fighters_cumul_df <- 
+  fighters_df %>%
+  slice(n()) 
+
+fighters_cumul_df %>% saveRDS('fighters_cumul_df.RDS')
+fighters_cumul_df %>% write.csv('fighters_cumul.csv', row.names = FALSE)
 
 # Split back into fighter1 and fighter2 dataframes ------------------------
 

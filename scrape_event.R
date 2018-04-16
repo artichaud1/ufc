@@ -37,6 +37,7 @@ scrape_event <- function(url){
   
   fights_df %<>% 
     mutate(
+      Event_url = url,
       Fight_url = fights_nodes %>%
                     html_nodes('tbody tr.b-fight-details__table-row') %>% 
                     html_attr('data-link')

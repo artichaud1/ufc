@@ -5,7 +5,7 @@ library(purrr)
 library(stringr)
 
 
-scrape_events <- function(){
+scrape_events <- function(verbose = TRUE){
   events_webpage <- read_html('http://www.fightmetric.com/statistics/events/completed?page=all')
   
   events_nodes <- html_nodes(events_webpage, ".b-statistics__table-events") 
@@ -15,6 +15,8 @@ scrape_events <- function(){
     html_table(header = TRUE, fill = TRUE) %>%
     extract2(1) %>%
     na.omit
+  
+  if(verbose) print(paste("Found", nrow(events_df), "events."))
   
   events_df %<>%
     mutate(Url = html_nodes(events_nodes, "i a") %>% html_attr('href'))

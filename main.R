@@ -311,3 +311,18 @@ fights_model_df <-
 
 fights_model_df %>% saveRDS('fights_model_df.RDS')
 fights_model_df %>% write.csv('fights_model.csv', row.names = FALSE)
+
+
+# Save datasets to dropbox ------------------------------------------------
+
+library(rdrop2)
+token <- drop_auth()
+saveRDS(token, file = "~/dropbox_token.rds")
+
+# create ufc folder if doesn't exist
+res <- drop_dir(dtoken = token) %>% filter(.tag == "folder" & name == 'ufc')
+if(nrow(res) == 0) drop_create('ufc', dtoken = token)
+drop_upload('fights_model.csv', path = 'ufc', dtoken = token)
+drop_upload('fights.csv', path = 'ufc', dtoken = token)
+drop_upload('fighters.csv', path = 'ufc', dtoken = token)
+drop_upload('fighters_cumul.csv', path = 'ufc', dtoken = token)

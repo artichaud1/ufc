@@ -25,6 +25,7 @@ fighters_df <-
   split_fighters() %>% 
   regroup_cumul() %>%
   compute_win_ratios() %>%
+  per_min_stats() %>%
   compute_lagged_stats() %>%
   {if(save_outputs){
     write_rds('fighters_df.RDS') %>%

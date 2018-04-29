@@ -60,15 +60,6 @@ make_mins <- function(fights){
 }
 
 
-per_min_stats <- function(fights){
-  
-  num_vars <- colnames(fights)[map_lgl(fights, is.numeric)] %>% setdiff(c('Round', 'Mins'))
-  
-  for(num_var in num_vars) fights[[num_var]] <- fights[[num_var]] / fights$Mins
-  
-  fights
-}
-
 
 make_date <- function(fights){
   
@@ -239,6 +230,38 @@ compute_win_ratios <- function(fighters_df){
 }
 
 
+# Compute per min stats ---------------------------------------------------
+
+per_min_stats <- function(fighters_df){
+  
+  all_cols <- colnames(fighters_df)
+  
+  fight_stats <- 
+    c('Kd', 'SigStrikes', 'Total_SigStrikes', 'TotStrikes', 'Total_TotStrikes',
+      'Td', 'Total_Td', 'SubAtt', 'Pass', 'Rev', 'Head', 'Total_Head',
+      'Body', 'Total_Body', 'Leg', 'Total_Leg', 'Distance', 'Total_Distance',
+      'Clinch', 'Total_Clinch', 'Ground', 'Total_Ground')
+  
+  cume_fight_stats <- paste0('Cume_', fight_stats)
+  
+  cume_fight_stats <- c(cume_fight_stats, paste0(cume_fight_stats, '_Against'))
+  
+  cume_win_stats <- 
+    c('Cume_Wins', 
+      all_cols[str_detect(all_cols, 'Method') & 
+                 startsWith(all_cols, 'Cume') &
+                 !str_detect(all_cols, 'Ratio')])
+  
+  cume_other_stats <- c('Cume_N_Fights')
+  
+  for(col in c(cume_fight_stats, cume_win_stats, cume_other_stats)){
+    fighters_df[[paste0(col, '_PM')]] <- fighters_df[[col]] / fighters_df$Cume_Mins
+  }
+  
+  fighters_df
+}
+
+
 # Compute lagged cumulative stats ------------------------------------------------
 
 compute_lagged_stats <- function(fighters_df){
@@ -257,8 +280,6 @@ compute_lagged_stats <- function(fighters_df){
   
   fighters_df
 }
-
-
 
 
 # For modeling purposes, split back into fighter1 and fighter2 dataframes ---------------

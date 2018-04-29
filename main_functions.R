@@ -6,12 +6,19 @@ library(readr)
 library(dplyr)
 library(recipes)
 library(rlang)
+library(purrr)
 
 
-# Preprocessing functions -------------------------------------------------
+# General use functions ---------------------------------------------------
 
 `%nin%` <- purrr::negate(`%in%`)
 
+println <- function(v){
+  walk(v, ~ cat(paste(., '\n')))
+}
+
+
+# Preprocessing functions -------------------------------------------------
 
 split_xofy <- function(fights, cols){
   
@@ -324,7 +331,7 @@ merge_back_stats <- function(fighter12, fights_df){
 
 # Create modeling dataset -------------------------------------------------
 
-create_model_dataset <- function(fights_df){
+reverse_bind <- function(fights_df){
   
   fights_1_df <- fights_df %>% select(ends_with('1'))
   fights_2_df <- fights_df %>% select(ends_with('2'))

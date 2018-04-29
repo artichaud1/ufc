@@ -11,7 +11,8 @@ full_df <-
     target,
     Weight.class,
     Date,
-    starts_with('Prev_Cume')
+    intersect(starts_with('Prev_Cume'), ends_with('PM')),
+    intersect(starts_with('Prev_Cume'), ends_with('Ratio'))
   ) %>%
   replace(is.na(.), 0) %>%
   mutate(

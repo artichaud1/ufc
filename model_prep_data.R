@@ -16,13 +16,8 @@ full_df <-
   ) %>%
   replace(is.na(.), 0) %>%
   mutate(
-    gender = ifelse(str_detect(Weight.class, 'Women'), 0, 1)#,
-    # Weight.class = as.numeric(
-    #                   factor(str_trim(str_replace(Weight.class, "Women's", '')),
-    #                          levels = c('Strawweight', 'Flyweight', 'Bantamweight',
-    #                                     'Featherweight', 'Lightweight', 'Welterweight',
-    #                                     'Middleweight', 'Light Heavyweight', 'Heavyweight',
-    #                                     'Super Heavyweight', 'Catch Weight', 'Open Weight')))
+    gender = ifelse(str_detect(Weight.class, 'Women'), 0, 1),
+    Weight.class = factor(str_trim(str_replace(Weight.class, "Women's", '')))
   ) 
 
 train_df <- full_df %>% filter(year(Date) < 2017) 

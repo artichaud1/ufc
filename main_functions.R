@@ -254,7 +254,7 @@ per_min_stats <- function(fighters_df){
   cume_fight_stats <- c(cume_fight_stats, paste0(cume_fight_stats, '_Against'))
   
   cume_win_stats <- 
-    c('Cume_Wins', 
+    c('Cume_Wins', 'Cume_Wins_Against',
       all_cols[str_detect(all_cols, 'Method') & 
                  startsWith(all_cols, 'Cume') &
                  !str_detect(all_cols, 'Ratio')])
@@ -269,7 +269,7 @@ per_min_stats <- function(fighters_df){
 }
 
 
-# Compute lagged cumulative stats ------------------------------------------------
+# Compute lagged cumulative stats, replacing NAs with 0----------------------------
 
 compute_lagged_stats <- function(fighters_df){
   
@@ -324,6 +324,7 @@ resplit_fighters12 <- function(fighters_df){
 merge_back_stats <- function(fighter12, fights_df){
   
   fights_df %>%
+    mutate_if(is.factor, as.character) %>%
     left_join(fighter12[[1]], by = c('Fight_url', 'Date')) %>%
     left_join(fighter12[[2]], by = c('Fight_url', 'Date'))
 }
@@ -344,8 +345,8 @@ reverse_bind <- function(fights_df){
   fights_reverse_df <- 
     bind_cols(fights_other_df, fights_1_df, fights_2_df) 
   
-  bind_rows(fights_df %>% mutate(target = 1) %>% mutate_if(is.factor, as.character),
-            fights_reverse_df %>% mutate(target = 0) %>% mutate_if(is.factor, as.character))
+  bind_rows(fights_df %>% mutate(target = 1),
+            fights_reverse_df %>% mutate(target = 0))
   
 }
 

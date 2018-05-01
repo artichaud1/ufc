@@ -70,32 +70,32 @@ train_samples_df$recipes <- map(train_samples_df$splits,
                                 verbose = FALSE)
 
 
-# Return specific model predictions using specified training params.
-train_predict_ranger <- function(recipe, split, params, target){
-  
-  model <- ranger(data = as.data.frame(juice(recipe)), 
-                  dependent.variable.name = target,
-                  num.trees = 50,
-                  write.forest = TRUE,
-                  probability = TRUE,
-                  min.node.size = params$min.node.size,
-                  mtry = params$mtry)
-  
-  eval_df <- bake(recipe, newdata = assessment(split))
-  preds <- predict(model, eval_df, type = 'response')$predictions
-  
-  bind_cols(target = as.numeric(as.character(eval_df[['target']])), predicted = preds[, '1'])
+train_ranger <- function(train_df, params){
+  ranger(data = train_df, 
+         dependent.variable.name = target,
+         num.trees = 50,
+         write.forest = TRUE,
+         probability = TRUE,
+         min.node.size = params$min.node.size,
+         mtry = params$mtry)
+}
+
+predict_ranger <- function(model, eval_df){
+  predict(model, eval_df, type = 'response')$predictions[, '1']
 }
 
 param_grid <- cross(list(mtry = c(10,5), min.node.size=c(10,50)))
 
-accuracy50 <- partial(accuracy, threshold = 0.50)
+accuracy <- function(predicted, target, threshold = 0.5){
+  mean(ifelse(predicted > threshold, 1, 0) == target)
+} 
 
 tuning_results <- 
   grid_search(train_samples_df, 
               'target', 
               param_grid, 
-              train_predict_ranger, 
+              train_ranger,
+              predict_ranger,
               list(acc = accuracy),
               threshold = 0.70)
   

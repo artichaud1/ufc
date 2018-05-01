@@ -14,13 +14,19 @@ grid_predict <- function(recipe, split, param_grid, target, train_predict){
 # train_predict is a function that takes parameters recipe, split, params and target, and returns
 # model predictions using specified params.
 # metrics is a list of metric functions, taking predictions and target values as parameters.
-grid_search <- function(df, target, param_grid, train_predict, metrics){
+# ... arguments to metrics functions (e.g. threshold)
+grid_search <- function(df, target, param_grid, train_predict, metrics, ...){
+  
+  if(length(names(metrics)) < length(metrics)){
+    stop('All elements in metrics parameter must be named')
+  }
+  
   df %>%
     mutate(
       params = list(param_grid),
       pred = pmap(
         list(recipes, splits, params),
-        tune,
+        grid_predict,
         train_predict = train_predict_ranger,
         target = target
       )
@@ -33,7 +39,7 @@ grid_search <- function(df, target, param_grid, train_predict, metrics){
         function(pred){
           invoke_map_dfc(
             metrics,
-            list(list(pred))
+            list(list(pred$predicted, pred$target, ...))
           )
         }
       )

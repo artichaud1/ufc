@@ -10,7 +10,10 @@ library(ggplot2)
 library(ggthemes)
 library(foreach)
 
+
 source('featurize.R')
+source('tidy_grid.R')
+source('metrics.R')
 
 raw_df <- readRDS('fights_model_df.RDS')
 
@@ -86,23 +89,35 @@ train_predict_ranger <- function(recipe, split, params, target){
 
 param_grid <- cross(list(mtry = c(10,5), min.node.size=c(10,50)))
 
-grid_search(train_samples_df, param_grid, train_predict_ranger)
-  
-
+accuracy50 <- partial(accuracy, threshold = 0.50)
 
 tuning_results <- 
-  train_samples_df %>%
-  group_by(
-    mtry = map_dbl(params, 'mtry'),
-    min.node.size = map_dbl(params, 'min.node.size')
-  ) %>%
-  summarize(
-    accuracy = mean(accuracy)
-  )
-
-ggplot(data = tuning_results) + 
-  geom_point(aes(x = min.node.size, y = accuracy, col = factor(mtry), group = factor(mtry))) + 
-  geom_line(aes(x = min.node.size, y = accuracy, col = factor(mtry), group = factor(mtry))) + 
-  theme_bw()
-
+  grid_search(train_samples_df, 
+              'target', 
+              param_grid, 
+              train_predict_ranger, 
+              list(acc = accuracy),
+              threshold = 0.70)
   
+
+
+
+
+
+
+# tuning_results <- 
+#   train_samples_df %>%
+#   group_by(
+#     mtry = map_dbl(params, 'mtry'),
+#     min.node.size = map_dbl(params, 'min.node.size')
+#   ) %>%
+#   summarize(
+#     accuracy = mean(accuracy)
+#   )
+# 
+# ggplot(data = tuning_results) + 
+#   geom_point(aes(x = min.node.size, y = accuracy, col = factor(mtry), group = factor(mtry))) + 
+#   geom_line(aes(x = min.node.size, y = accuracy, col = factor(mtry), group = factor(mtry))) + 
+#   theme_bw()
+# 
+#   

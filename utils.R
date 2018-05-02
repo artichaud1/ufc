@@ -1,8 +1,17 @@
-library(dplyr)
+library(purrr)
+library(stringr)
 
-comb_df <- function(df1, df2){
+make_params <- function(...){
+  args <- list(...)
   
-  rows <- expand.grid(df1 = 1:nrow(df1), df2 = 1:nrow(df2))
-  bind_cols(df1[rows$df1, ], df2[rows$df2, ])
+  param_grid <- 
+    cross(args)
   
+  param_ids <- format(seq_along(param_grid)) %>% str_replace(' ', '0')
+  
+  map2(
+    param_grid,
+    param_ids,
+    ~ c(.x, paramset = .y)
+  )
 }

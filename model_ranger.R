@@ -13,14 +13,14 @@ library(foreach)
 
 source('featurize.R')
 source('tidy_grid.R')
-source('metrics.R')
+
 
 raw_df <- readRDS('fights_model_df.RDS')
 
 # Exclude 1st fights from modeling data
 except_1st_fights_df <- raw_df %>% filter(!is.na(Prev_Cume_Mins_1), !is.na(Prev_Cume_Mins_2))
 
-# Now any remaining NA's with zeros
+# Now replace any remaining NA's with zeros
 no_NAs_df <- except_1st_fights_df %>% replace(is.na(.), 0)
 
 full_df <- 
@@ -70,10 +70,10 @@ train_samples_df$recipes <- map(train_samples_df$splits,
                                 verbose = FALSE)
 
 
-train_ranger <- function(train_df, params){
+train_ranger <- function(train_df, target, params){
   ranger(data = train_df, 
          dependent.variable.name = target,
-         num.trees = 50,
+         num.trees = params$num.trees,
          write.forest = TRUE,
          probability = TRUE,
          min.node.size = params$min.node.size,
@@ -84,11 +84,9 @@ predict_ranger <- function(model, eval_df){
   predict(model, eval_df, type = 'response')$predictions[, '1']
 }
 
-param_grid <- cross(list(mtry = c(10,5), min.node.size=c(10,50)))
-
-accuracy <- function(predicted, target, threshold = 0.5){
-  mean(ifelse(predicted > threshold, 1, 0) == target)
-} 
+param_grid <- make_params(mtry = 3:7, 
+                          min.node.size = c(50, 100, 200),
+                          num.trees = c(100, 200))
 
 tuning_results <- 
   grid_search(train_samples_df, 
@@ -97,27 +95,72 @@ tuning_results <-
               train_ranger,
               predict_ranger,
               list(acc = accuracy),
-              threshold = 0.70)
-  
+              threshold = 0.50) 
 
+best_paramset <- 
+  tuning_results %>%
+  group_by(paramset) %>%
+  summarise(acc = mean(acc)) %>%
+  filter(acc == max(acc)) %>%
+  pull(paramset)
 
+best_tuning_results <- 
+  tuning_results %>%
+  filter(paramset == best_paramset)
 
+roc_results <- 
+  best_tuning_results %>%
+  mutate(
+    roc = map(
+      pred,
+      ~ roc(.$predicted, .$target)
+    )
+  ) %>%
+  unnest(roc) %>%
+  group_by(model, threshold) %>%
+  summarise(
+    precision = mean(precision),
+    recall = mean(recall),
+    tpr = mean(tpr),
+    fpr = mean(fpr)
+  )
 
+plot_roc(roc_results, 'fpr', 'tpr')
 
-
-# tuning_results <- 
-#   train_samples_df %>%
-#   group_by(
-#     mtry = map_dbl(params, 'mtry'),
-#     min.node.size = map_dbl(params, 'min.node.size')
-#   ) %>%
-#   summarize(
-#     accuracy = mean(accuracy)
-#   )
-# 
-# ggplot(data = tuning_results) + 
-#   geom_point(aes(x = min.node.size, y = accuracy, col = factor(mtry), group = factor(mtry))) + 
-#   geom_line(aes(x = min.node.size, y = accuracy, col = factor(mtry), group = factor(mtry))) + 
-#   theme_bw()
-# 
+# Code below is relevant to visualize tuning results
+#
+# tuning_results_summ <- 
+#   tuning_results %>%
+#   group_by_at(vars(-id, -pred, -acc)) %>%
+#   summarise(acc = mean(acc))
 #   
+# ggplot(data = tuning_results_summ,
+#        aes(x = num.trees, y = acc, col = factor(min.node.size))) + 
+#   geom_point() + 
+#   geom_line() +
+#   theme_light()
+
+
+# Code below is relevant to train final model on train_df and test on test_df
+
+# prepped_rec <- prep(rec, retain = TRUE)
+# baked_train_df <- as.data.frame(juice(prepped_rec))
+# baked_test_df <- bake(prepped_rec, test_df)
+# 
+# model <- train_ranger(baked_train_df, 
+#                       target = 'target', 
+#                       params = list(
+#                         mtry = 6, 
+#                         min.node.size = 200,
+#                         num.trees = 100
+#                       ))
+# 
+# preds <- predict_ranger(model, baked_test_df)
+# 
+# res_df <- 
+#   bind_cols(target = as.numeric(as.character(baked_test_df[['target']])), predicted = preds)
+# 
+# accuracy(res_df$predicted, res_df$target)
+# roc_data <- roc(res_df$predicted, res_df$target, model = 'ranger') 
+# 
+# roc_data %>% plot_roc('recall', 'precision')

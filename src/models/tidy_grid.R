@@ -2,21 +2,21 @@ library(dplyr)
 library(purrr)
 
 
-train_predict <- function(recipe, split, params, target, train_func, predict_func){
+train_predict <- function(recipe, split, params, target, train_predict_func){
   
-  model <- train_func(juice(recipe) %>% as.data.frame, target, params)
-  
-  eval_df <- bake(recipe, newdata = assessment(split))
-  preds <- predict_func(model, eval_df)
+  train_df <- juice(recipe) %>% as.data.frame
+  eval_df <- recipe %>% bake(assessment(split)) %>% as.data.frame
+
+  preds <- train_predict_func(train_df, target, params, eval_df)
   
   bind_cols(target = as.numeric(as.character(eval_df[[target]])), predicted = preds)
   
 }
 
 # For a grid of params, return list of model predictions.
-grid_predict <- function(recipe, split, param_grid, target, train_func, predict_func){
+grid_predict <- function(recipe, split, param_grid, target, train_predict_func){
   foreach(params = param_grid) %do% {
-    train_predict(recipe, split, params, target, train_func, predict_func)
+    train_predict(recipe, split, params, target, train_predict_func)
   }
 }
 
@@ -27,7 +27,7 @@ grid_predict <- function(recipe, split, param_grid, target, train_func, predict_
 # predict_func is your model predict function. Must accept parameters model and data.frame.
 # metrics is a list of metric functions, taking predictions and target values as parameters.
 # ... arguments to metrics functions (e.g. threshold)
-grid_search <- function(train_data, target, param_grid, train_func, predict_func, metrics, ...){
+grid_search <- function(train_data, target, param_grid, train_predict_func, metrics, ...){
   
   if(length(names(metrics)) < length(metrics)){
     stop('All elements in metrics parameter must be named')
@@ -40,8 +40,7 @@ grid_search <- function(train_data, target, param_grid, train_func, predict_func
         list(recipes, splits, params),
         grid_predict,
         target = target,
-        train_func = train_func,
-        predict_func = predict_func
+        train_predict_func = train_predict_func
       )
     ) %>%
     unnest(params, pred) %$%

@@ -5,7 +5,7 @@ library(purrr)
 library(stringr)
 
 
-scrape_events <- function(verbose = TRUE){
+scrape_event_list <- function(verbose = TRUE){
   events_webpage <- read_html('http://www.fightmetric.com/statistics/events/completed?page=all')
   
   events_nodes <- html_nodes(events_webpage, ".b-statistics__table-events") 

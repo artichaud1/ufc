@@ -1,24 +1,29 @@
 #### Params ----
-save_outputs = TRUE
+save_outputs = FALSE
 save_dropbox = FALSE
 
 
 library(readr)
 library(magrittr)
 
-source('main_functions.R')
+source('src/webscrape/main_functions.R')
 
-# source('scrape_fights.R')
-# fights_scraped <- scrape_fights() 
-# fights_scraped %>% saveRDS('fights_scraped_df.RDS')
-# fights_scraped %>% write.csv('fights_scraped.csv', row.names = FALSE)
+source('src/webscrape/scrape_fights.R')
+fights_scraped <- scrape_fights()
+fights_scraped %>% saveRDS('data/fights_scraped_df.RDS')
+fights_scraped %>% write.csv('data/fights_scraped.csv', row.names = FALSE)
 
 
 # Compute stats & win ratios, including lagged values.
 fights_df <- 
-  readRDS('fights_scraped_df.RDS') %>%
+  readRDS('data/fights_scraped_df.RDS') %>%
   na.omit() %>%
-  create_fights_df()
+  create_fights_df() %>%
+  {if(save_outputs){
+    write_rds(., 'data/fights_df.RDS') %>%
+    write_csv(., 'data/fights.csv')}
+  }
+
 
 fighters_df <- 
   fights_df %>%
@@ -29,8 +34,8 @@ fighters_df <-
   per_min_stats() %>%
   compute_lagged_stats() %>%
   {if(save_outputs){
-    write_rds(., 'fighters_df.RDS') %>%
-    write_csv(., 'fighters.csv')}
+    write_rds(., 'data/fighters_df.RDS') %>%
+    write_csv(., 'data/fighters.csv')}
   }
 
 
@@ -44,14 +49,14 @@ fighters_cumul_df <-
   }
 
 # Create modeling dataset
-fighters_model_df <- 
+fights_model_df <- 
   fighters_df %>% 
   resplit_fighters12() %>%
   merge_back_stats(fights_df) %>%
   reverse_bind() %>%
   {if(save_outputs){
-    write_rds(., 'fights_model_df.RDS') %>%
-    write_csv(., 'fights_model.csv')}
+    write_rds(., 'data/fights_model_df.RDS') %>%
+    write_csv(., 'data/fights_model.csv')}
   }
 
 

@@ -1,6 +1,6 @@
-source('./model_ranger_functions.R')
+source('src/models/ranger/model_ranger_functions.R')
 
-raw_df <- readRDS('fights_model_df.RDS')
+raw_df <- read.csv('data/fights_model.csv')
 
 features_df <- make_features(raw_df)
 rec <- make_recipe(features_df)

@@ -11,7 +11,7 @@ library(ggthemes)
 library(foreach)
 
 
-source('./featurize.R')
+source('src/models/featurize.R')
 
 
 make_features <- function(raw_df){
